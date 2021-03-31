@@ -10,7 +10,7 @@ d3.json(earthquakesUrl, function(data) {
 function createFeatures(earthquakeData) {
 
     // Define a function we want to run once for each feature in the features array
-    // Give each feature a popup describing the place and time of the earthquake
+    // Give each feature a popup describing the magniture, depth, place and time of the earthquake
     function onEachFeature(feature, layer) {
         layer.bindPopup("<h3>Magnitude: " + feature.properties.mag +
             ", Depth: " + feature.geometry.coordinates[2] +
@@ -18,9 +18,21 @@ function createFeatures(earthquakeData) {
             "</h3><hr><p>" + new Date(feature.properties.time) + "</p>");
     }
 
-    // Create a GeoJSON layer containing the features array on the earthquakeData object
-    // Run the onEachFeature function once for each piece of data in the array
+    // Create a GeoJSON layer containing the features array on the earthquakeData object - create circles
     var earthquakes = L.geoJSON(earthquakeData, {
+
+        pointToLayer: function(feature, latlng) {
+            return L.circleMarker(latlng, {
+                radius: markerSize(feature.properties.mag),
+                fillColor: colorRange(feature.geometry.coordinates[2]),
+                color: "black",
+                weight: 0.3,
+                opacity: 0.8,
+                fillOpacity: 0.8
+            });
+        },
+
+        // Run the onEachFeature function once for each piece of data in the array
         onEachFeature: onEachFeature
     });
 
@@ -30,7 +42,7 @@ function createFeatures(earthquakeData) {
 
 function createMap(earthquakes) {
 
-    // Define streetmap and darkmap layers
+    // Define streetmap and darkmap and satellite layers
     var streetmap = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
         attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
         tileSize: 512,
@@ -47,10 +59,20 @@ function createMap(earthquakes) {
         accessToken: API_KEY
     });
 
+    var satellitemap = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
+        attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
+        tileSize: 512,
+        maxZoom: 18,
+        zoomOffset: -1,
+        id: "mapbox/satellite-v9",
+        accessToken: API_KEY
+    });
+
     // Define a baseMaps object to hold our base layers
     var baseMaps = {
         "Street Map": streetmap,
-        "Dark Map": darkmap
+        "Dark Map": darkmap,
+        "Satellite Map": satellitemap
     };
 
     // Create overlay object to hold our overlay layer
@@ -63,7 +85,7 @@ function createMap(earthquakes) {
         center: [
             37.09, -95.71
         ],
-        zoom: 3,
+        zoom: 5,
         layers: [streetmap, earthquakes]
     });
 
@@ -73,4 +95,38 @@ function createMap(earthquakes) {
     L.control.layers(baseMaps, overlayMaps, {
         collapsed: false
     }).addTo(myMap);
+
+    // Create the legend
+    var legend = L.control({
+        position: "bottomright"
+    });
+
+    legend.onAdd = function() {
+        var div = L.DomUtil.create("div", "info legend");
+        var legendlabel = [0, 5, 10, 20, 50, 100];
+        var colors = ['#800026', '#BD0026', '#E31A1C', '#FD8D3C', '#FED976', '#FFEDA0'];
+
+        for (var i = 0; i < legendlabel.length; i++) {
+            div.innerHTML += "<i style='background: " + colors[i + 1] + "'></i> " + legendlabel[i] + (legendlabel[i + 1] ? "&ndash;" +
+                legendlabel[i + 1] + "<br>" : "+");
+        }
+        return div;
+    };
+    // Add legend to the map
+    legend.addTo(myMap);
 }
+
+// Define colors depending on the depth of the earthquake
+function colorRange(d) {
+    return d > 100 ? '#800026' :
+        d > 50 ? '#BD0026' :
+        d > 20 ? '#E31A1C' :
+        d > 10 ? '#FD8D3C' :
+        d > 5 ? '#FED976' :
+        '#FFEDA0';
+};
+
+// Reflect the earthquake magnitude
+function markerSize(magnitude) {
+    return magnitude * 2;
+};
