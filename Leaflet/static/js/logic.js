@@ -46,7 +46,7 @@ function createMap(earthquakes) {
     var streetmap = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
         attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
         tileSize: 512,
-        maxZoom: 18,
+        maxZoom: 16,
         zoomOffset: -1,
         id: "mapbox/streets-v11",
         accessToken: API_KEY
@@ -54,7 +54,7 @@ function createMap(earthquakes) {
 
     var darkmap = L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
         attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
-        maxZoom: 18,
+        maxZoom: 16,
         id: "dark-v10",
         accessToken: API_KEY
     });
@@ -62,22 +62,33 @@ function createMap(earthquakes) {
     var satellitemap = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
         attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
         tileSize: 512,
-        maxZoom: 18,
+        maxZoom: 16,
         zoomOffset: -1,
         id: "mapbox/satellite-v9",
         accessToken: API_KEY
     });
 
+    // Add tectonic plates
+    var tectonicPlates = new L.LayerGroup();
+    d3.json("https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json", function(plateData) {
+        L.geoJSON(plateData, {
+                color: 'green',
+                weight: 1
+            })
+            .addTo(tectonicPlates);
+    });
+
     // Define a baseMaps object to hold our base layers
     var baseMaps = {
-        "Street Map": streetmap,
         "Dark Map": darkmap,
+        "Street Map": streetmap,
         "Satellite Map": satellitemap
     };
 
     // Create overlay object to hold our overlay layer
     var overlayMaps = {
-        Earthquakes: earthquakes
+        "Earthquakes": earthquakes,
+        "Tectonic Plates": tectonicPlates
     };
 
     // Create our map, giving it the streetmap and earthquakes layers to display on load
@@ -85,8 +96,8 @@ function createMap(earthquakes) {
         center: [
             37.09, -95.71
         ],
-        zoom: 5,
-        layers: [streetmap, earthquakes]
+        zoom: 3,
+        layers: [darkmap, earthquakes]
     });
 
     // Create a layer control
@@ -103,13 +114,15 @@ function createMap(earthquakes) {
 
     legend.onAdd = function() {
         var div = L.DomUtil.create("div", "info legend");
-        var legendlabel = [0, 5, 10, 20, 50, 100];
-        var colors = ['#800026', '#BD0026', '#E31A1C', '#FD8D3C', '#FED976', '#FFEDA0'];
+        labels = ['<strong>Depth KM</strong>']
+        legendlabel = ["< 5", "> 5", "> 10", "> 20", "> 50", "> 100"];
+        colors = ['#FCF4A3', '#FDCE2A', '#FD8D3C', '#E31A1C', '#BD0026', '#800026'];
 
         for (var i = 0; i < legendlabel.length; i++) {
-            div.innerHTML += "<i style='background: " + colors[i + 1] + "'></i> " + legendlabel[i] + (legendlabel[i + 1] ? "&ndash;" +
-                legendlabel[i + 1] + "<br>" : "+");
+            div.innerHTML += labels.push(
+                "<i class='circle' style='background: " + colors[i] + "'></i> " + legendlabel[i] + "<br>");
         }
+        div.innerHTML = labels.join('<br>');
         return div;
     };
     // Add legend to the map
@@ -122,11 +135,11 @@ function colorRange(d) {
         d > 50 ? '#BD0026' :
         d > 20 ? '#E31A1C' :
         d > 10 ? '#FD8D3C' :
-        d > 5 ? '#FED976' :
-        '#FFEDA0';
+        d > 5 ? '#FDCE2A' :
+        '#FCF4A3';
 };
 
 // Reflect the earthquake magnitude
 function markerSize(magnitude) {
-    return magnitude * 2;
+    return magnitude * 2.5;
 };
